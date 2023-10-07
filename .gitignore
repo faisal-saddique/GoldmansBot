@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
+data/DDW_Location_details_with_services_FINAL.csv
+
 # Distribution / packaging
 .Python
 build/

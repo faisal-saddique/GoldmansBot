@@ -1,0 +1,7 @@
+langchain==0.0.310
+openai==0.27.9
+pandas==1.5.3
+python-dotenv==1.0.0
+streamlit==1.26.0
+tiktoken
+faiss-cpu
