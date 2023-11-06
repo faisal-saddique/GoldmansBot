@@ -5,3 +5,4 @@ python-dotenv==1.0.0
 streamlit==1.26.0
 tiktoken
 faiss-cpu
+weaviate-client==3.22.1
