@@ -10,6 +10,8 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
 from langchain.retrievers.multi_query import MultiQueryRetriever
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain.document_loaders.recursive_url_loader import RecursiveUrlLoader
 from bs4 import BeautifulSoup as Soup
 from langchain.prompts import (HumanMessagePromptTemplate,SystemMessagePromptTemplate,ChatPromptTemplate)
@@ -54,7 +56,13 @@ def configure_retriever():
     retriever_from_llm = MultiQueryRetriever.from_llm(
         retriever=retriever, llm=llm
     )
-    return retriever_from_llm
+
+    # return retriever_from_llm
+
+    compressor = LLMChainExtractor.from_llm(llm)
+    compression_retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=retriever_from_llm)
+
+    return compression_retriever
 
 # Callback handler for streaming text
 class StreamHandler(BaseCallbackHandler):
