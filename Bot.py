@@ -47,9 +47,11 @@ def configure_retriever():
         index_name="PerryDocs",
         text_key="text",
         k=6,
-        attributes=["source", "page"],
+        attributes=["source"],
         create_schema_if_missing=False,
     )
+
+    # return retriever
 
     llm = ChatOpenAI(temperature=0)
 
@@ -102,20 +104,43 @@ def scrape_website_recursively(url):
     with st.sidebar:
         loader = RecursiveUrlLoader(url=url, max_depth=2, extractor=lambda x: Soup(x, "html.parser").text, exclude_dirs=["https://www.dreamworldvision.com/a/dreamtopia/meta-quest-3-a-comprehensive-overview","https://www.dreamworldvision.com/a/dreamtopia/hololens-a-dim-outlook-or-a-bright-future","https://www.dreamworldvision.com/a/dreamtopia/augmented-reality-the-future-of-retail-and-marketing","https://www.dreamworldvision.com/a/dreamtopia/apple-vision-pro-a-game-changer-or-a-gimmick"])
         docs = loader.load()
-            # Create OpenAIEmbeddings object using the provided API key
-        embeddings = OpenAIEmbeddings()
-        docsearch = FAISS.from_documents(docs, embeddings)
-        # Check if the folder super_knowledgebase already exists
-        if os.path.exists("super_knowledgebase"):
-            st.info("Merging with an existing index...")
-            existing_docsearch = FAISS.load_local(folder_path="super_knowledgebase", embeddings=embeddings, index_name="main")
-            existing_docsearch.merge_from(docsearch)
-            existing_docsearch.save_local("super_knowledgebase", index_name="main")
-            st.info("Merged index saved.")
-        else:
-            docsearch.save_local("super_knowledgebase", index_name="main")
-            st.info("New index saved.")
-        st.cache_resource.clear()
+
+        WEAVIATE_URL = os.getenv("WEAVIATE_URL")
+        auth_client_secret = weaviate.AuthApiKey(api_key=os.getenv("WEAVIATE_API_KEY"))
+
+        client = weaviate.Client(
+            url=WEAVIATE_URL,
+            additional_headers={
+                "X-Openai-Api-Key": os.getenv("OPENAI_API_KEY"),
+            },
+            # auth_client_secret=auth_client_secret
+        )
+
+        retriever = WeaviateHybridSearchRetriever(
+            client=client,
+            index_name="PerryDocs",
+            text_key="text",
+            attributes=[],
+            create_schema_if_missing=True,
+        )
+
+        chunk_size = 1000
+        total_docs = len(docs)
+
+        for start in range(0, total_docs, chunk_size):
+            end = min(start + chunk_size, total_docs)
+            chunk = docs[start:end]
+            
+            # Print some information about the current chunk
+            print(f"Pushing chunk {start // chunk_size + 1} of {total_docs // chunk_size + 1}")
+            print(f"Chunk size: {len(chunk)} documents")
+            
+            retriever.add_documents(chunk)
+
+            # Print a message after each chunk is pushed
+            print(f"Chunk {start // chunk_size + 1} pushed successfully.")
+
+        print("All URLs pushed to Weaviate.")
 
 # Add a sidebar to ask for a URL
 url = st.sidebar.text_input("Enter a URL")
